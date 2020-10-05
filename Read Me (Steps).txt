@@ -1,0 +1,58 @@
+01.  Extract the zip with models/research and data folders. Data folder can be deleted if working on some other data.
+02.  Open the project in PyCharm and make a environment. We just need the models folder and requirements.txt
+03.  Run command : pip install -r requirements.txt
+04.  Run command : cd models/research
+05.  Run command : python setup.py install
+06.  Run command : pip install labelme==3.16.7
+     Website link : https://github.com/wkentaro/labelme
+07.  Now to launch labelme, Run command : labelme
+08.  Go to 'Open Dir' and select 'data' folder which has our input data.
+09.  Select 'Create Polygons' and start creating polygons around the object of interest and enter the label of annotation.
+10.  Click on 'Save' and save this annotation as .json file.
+11.  The location to keep the train/test data that will be used in model training : models/research/object_detection/traindata.
+     There will be 4 folders, 'training' and 'testing' for images and 'trainjson' and 'testjson' for json files.
+Note : There are other annotation tools like : VIA, PixelAnnotationTool.
+       The code 'create_tf_records.py' is for labelme only.
+12.  Open 'create_tf_records.py' code and below code segment needs to be modified:
+         trainImagePath = "../research/object_detection/traindata/testing"
+         trainImageJsonPath = "../research/object_detection/traindata/testjson"
+         labelMapPath = "../research/object_detection/data/labelmapdog.pbtxt"
+         outputFolderPath = "../research/object_detection/data/custom_test_dog.record"
+     These are image location, annotation location, labelmap file and the tfrecord that will be created.
+     Make sure the first three files are present and fourth will be created with new chosen name with below modified line:
+         outputFolderPath = "../research/object_detection/data/custom_test_dog123.record"
+13.  Run the code 'create_tf_records.py' and the file 'custom_test_dog123.record' will be created.
+14.  Now make below changes to make tfrecord for training data and run the code again:
+         trainImagePath = "../research/object_detection/traindata/training"
+         trainImageJsonPath = "../research/object_detection/traindata/trainjson"
+         labelMapPath = "../research/object_detection/data/labelmapdog.pbtxt"
+         outputFolderPath = "../research/object_detection/data/custom_train_dog.record"
+15.  Go to the website : https://github.com/tensorflow/models/blob/master/research/object_detection/g3doc/tf1_detection_zoo.md
+     Download the model : 'mask_rcnn_inception_v2_coco' Unzip it and rename folder as 'mask'.
+     Copy the 'mask' folder in the 'models/research' location if not already there.
+16.  Now we need the config file to train this model.
+     Make a folder for training in research folder(custom_training was made for same purpose but lets make a new one with any name).
+     New folder 'mask_rcnn_training' created.
+     Copy the config file 'mask_rcnn_inception_v2_coco.config' from location 'models/research/object_detection/samples/configs'.
+     Paste it in 'mask_rcnn_training' folder. Copy 'labelmapdog.pbtxt' file from 'object_detection/data' folder to 'mask_rcnn_training' folder.
+17.  Open the 'mask_rcnn_inception_v2_coco.config' file in 'mask_rcnn_training' folder and do below modifications:
+     a. Line10 : (old) --> num_classes: 2
+                 (new) --> num_classes: 1
+     b. Line127 : (old) --> fine_tune_checkpoint: "PATH_TO_BE_CONFIGURED/model.ckpt"
+                  (new) -->fine_tune_checkpoint: "mask/model.ckpt"
+     c. Line142 : (old) --> input_path: "PATH_TO_BE_CONFIGURED/test.record"
+                  (new) --> input_path: "object_detection/data/custom_train_dog123.record"
+     d. Line144 : (old) --> label_map_path: "PATH_TO_BE_CONFIGURED/mscoco_label.pbtxt"
+                  (new) --> label_map_path: "mask_rcnn_training/labelmapdog.pbtxt"
+     e. Line123 : (old) --> num_steps: 100
+                  (new) --> num_steps: 10000
+     f. Line158 : (old) --> input_path: "PATH_TO_BE_CONFIGURED/test2.record"
+                  (new) --> input_path: "object_detection/data/custom_test_dog123.record"
+     g. Line160 : (old) --> label_map_path: "PATH_TO_BE_CONFIGURED/mscoco_label_map.pbtxt"
+                  (new) --> label_map_path: "mask_rcnn_training/labelmapdog.pbtxt"
+18.  Run command : python train.py --logtostderr --train_dir=mask_rcnn_training/ --pipeline_config_path=mask_rcnn_training/mask_rcnn_inception_v2_coco.config
+19.  This will start the training process. Interrupt it with ctrl+c. Latest model.ckpt can be found in mask_rcnn_training folder.
+20.  Run command : python export_inference_graph.py --input_type image_tensor --pipeline_config_path mask_rcnn_training/mask_rcnn_inception_v2_coco.config --trained_checkpoint_prefix mask_rcnn_training/model.ckpt-585 --output_directory my_model
+     This will create inference graph based on the model trained by me in 585 steps. It will be stored in 'my_model' folder. This is a conversion of .ckpt file to .pb file.
+21.  Now open the notebook 'object_detection_tutorial.ipynb' in the research folder and specify the appripriate location/name of 'frozen_inference_graph.pb' and 'labelmapdog.pbtxt'.
+     Input location/names of test image.
